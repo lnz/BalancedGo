@@ -5,7 +5,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/spakin/disjoint"
+	// "github.com/spakin/disjoint"
+	disj "github.com/cem-okulmus/BalancedGo/disj"
 )
 
 // A Graph is a collection of (special) edges
@@ -20,9 +21,9 @@ type Graph struct {
 type DSD struct {
 	Graph       *Graph
 	SepVertices map[int]bool //cached vertices of the seperator
-	Vertices    map[int]*disjoint.Element
-	Comps       map[*disjoint.Element][]Edge
-	CompsSp     map[*disjoint.Element][]Edges
+	Vertices    map[int]*disj.Element
+	Comps       map[*disj.Element][]Edge
+	CompsSp     map[*disj.Element][]Edges
 }
 
 // AddSepVertices adds new map bindings to SepVertices
@@ -99,13 +100,11 @@ func (g Graph) GetSubset(s []int) Edges {
 	return GetSubset(g.Edges, s)
 }
 
-// GetComponents uses Disjoint Set data structure to compute connected components
-func (g Graph) GetComponents(sep Edges) ([]Graph, map[int]int, []Edge) {
+func (g Graph) GetComponents_fast(sep Edges, vertices map[int]*disj.Element) ([]Graph, map[int]int, []Edge) {
 	var outputG []Graph
 
-	var vertices = make(map[int]*disjoint.Element)
-	var comps = make(map[*disjoint.Element][]Edge)
-	var compsSp = make(map[*disjoint.Element][]Edges)
+	var comps = make(map[*disj.Element][]Edge)
+	var compsSp = make(map[*disj.Element][]Edges)
 
 	balsepVert := sep.Vertices()
 	balSepCache := make(map[int]bool, len(balsepVert))
@@ -113,9 +112,152 @@ func (g Graph) GetComponents(sep Edges) ([]Graph, map[int]int, []Edge) {
 		balSepCache[v] = true
 	}
 
-	//  Set up the disjoint sets for each node
+	balSepCache2 := make(map[int]struct{})
+	for _, v := range balsepVert {
+		balSepCache2[v] = struct{}{}
+	}
+
+	//  Set up the disj sets for each node
 	for _, i := range g.Vertices() {
-		vertices[i] = disjoint.NewElement()
+		vertices[i] = disj.NewElement()
+	}
+
+	// Merge together the connected components
+	for k := range g.Edges.Slice() {
+		for i := 0; i < len(g.Edges.Slice()[k].Vertices)-1; i++ {
+			var a = g.Edges.Slice()[k].Vertices[i]
+			if _, ok := balSepCache2[a]; ok {
+				continue
+			}
+			var j = i + 1;
+			var b = g.Edges.Slice()[k].Vertices[j]
+			if _, ok := balSepCache[b]; ok {
+				continue
+			}
+
+			disj.Union(vertices[a], vertices[b])
+		}
+	}
+
+	for k := range g.Special {
+		for i := 0; i < len(g.Special[k].Vertices())-1; i++ {
+			if balSepCache[g.Special[k].Vertices()[i]] {
+				continue
+			}
+			for j := i + 1; j < len(g.Special[k].Vertices()); j++ {
+				if balSepCache[g.Special[k].Vertices()[j]] {
+					continue
+				}
+				disj.Union(vertices[g.Special[k].Vertices()[i]], vertices[g.Special[k].Vertices()[j]])
+				i = j - 1
+				break
+			}
+		}
+	}
+
+	var isolatedEdges []Edge
+
+	//sort each edge and special edge to a corresponding component
+	for i := range g.Edges.Slice() {
+		var vertexRep int
+		found := false
+		for _, v := range g.Edges.Slice()[i].Vertices {
+			if balSepCache[v] {
+				continue
+			}
+			vertexRep = v
+			found = true
+			break
+		}
+		if !found {
+			isolatedEdges = append(isolatedEdges, g.Edges.Slice()[i])
+			continue
+		}
+
+		slice, ok := comps[vertices[vertexRep].Find()]
+		if !ok {
+			newslice := make([]Edge, 0, g.Edges.Len())
+			comps[vertices[vertexRep].Find()] = newslice
+			slice = newslice
+		}
+
+		comps[vertices[vertexRep].Find()] = append(slice, g.Edges.Slice()[i])
+	}
+
+	var isolatedSp []Edges
+	for i := range g.Special {
+		var vertexRep int
+		found := false
+		for _, v := range g.Special[i].Vertices() {
+			if balSepCache[v] {
+				continue
+			}
+			vertexRep = v
+			found = true
+			break
+		}
+		if !found {
+			isolatedSp = append(isolatedSp, g.Special[i])
+			continue
+		}
+
+		slice, ok := compsSp[vertices[vertexRep].Find()]
+		if !ok {
+			newslice := make([]Edges, 0, len(g.Special))
+			compsSp[vertices[vertexRep].Find()] = newslice
+			slice = newslice
+		}
+
+		compsSp[vertices[vertexRep].Find()] = append(slice, g.Special[i])
+	}
+
+	edgeToComp := make(map[int]int)
+
+	// Store the components as graphs
+	for k := range comps {
+		slice := comps[k]
+		for i := range slice {
+			edgeToComp[slice[i].Name] = len(outputG)
+		}
+		g := Graph{Edges: NewEdges(slice), Special: compsSp[k]}
+		outputG = append(outputG, g)
+	}
+
+	for k := range compsSp {
+		_, ok := comps[k]
+		if ok {
+			continue
+		}
+		g := Graph{Edges: NewEdges([]Edge{}), Special: compsSp[k]}
+		outputG = append(outputG, g)
+	}
+
+	for i := range isolatedSp {
+		g := Graph{Edges: NewEdges([]Edge{}), Special: []Edges{isolatedSp[i]}}
+		outputG = append(outputG, g)
+	}
+
+	return outputG, edgeToComp, isolatedEdges
+
+}
+	
+// GetComponents uses Disj Set data structure to compute connected components
+func (g Graph) GetComponents(sep Edges) ([]Graph, map[int]int, []Edge) {
+	var outputG []Graph
+
+	var vertices = make(map[int]*disj.Element)
+	var comps = make(map[*disj.Element][]Edge)
+	var compsSp = make(map[*disj.Element][]Edges)
+
+	balsepVert := sep.Vertices()
+	balSepCache := make(map[int]bool, len(balsepVert))
+	for _, v := range balsepVert {
+		balSepCache[v] = true
+	}
+
+	//  Set up the disj sets for each node
+	for _, i := range g.Vertices() {
+		vertices[i] = disj.NewElement()
 	}
 
 	// Merge together the connected components
@@ -129,7 +271,7 @@ func (g Graph) GetComponents(sep Edges) ([]Graph, map[int]int, []Edge) {
 					continue
 				}
 
-				disjoint.Union(vertices[g.Edges.Slice()[k].Vertices[i]], vertices[g.Edges.Slice()[k].Vertices[j]])
+				disj.Union(vertices[g.Edges.Slice()[k].Vertices[i]], vertices[g.Edges.Slice()[k].Vertices[j]])
 				i = j - 1
 				break
 			}
@@ -145,7 +287,7 @@ func (g Graph) GetComponents(sep Edges) ([]Graph, map[int]int, []Edge) {
 				if balSepCache[g.Special[k].Vertices()[j]] {
 					continue
 				}
-				disjoint.Union(vertices[g.Special[k].Vertices()[i]], vertices[g.Special[k].Vertices()[j]])
+				disj.Union(vertices[g.Special[k].Vertices()[i]], vertices[g.Special[k].Vertices()[j]])
 				i = j - 1
 				break
 			}
@@ -248,7 +390,7 @@ func (d *DSD) Update(e Edge) {
 				continue
 			}
 
-			disjoint.Union(d.Vertices[e.Vertices[i]], d.Vertices[e.Vertices[j]])
+			disj.Union(d.Vertices[e.Vertices[i]], d.Vertices[e.Vertices[j]])
 			// j = i-1
 			break
 		}

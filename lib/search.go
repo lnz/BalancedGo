@@ -5,6 +5,7 @@ package lib
 import (
 	"runtime"
 	"sync"
+	disj "github.com/cem-okulmus/BalancedGo/disj"
 )
 
 // A Search implements a parallel search for separators fulfilling some given predicate
@@ -145,6 +146,10 @@ func (s ParallelSearch) worker(workernum int, found chan []int, wg *sync.WaitGro
 // BalancedCheck looks for Balanced Separators
 type BalancedCheck struct{}
 
+type BalancedCheckFast struct{
+	Vertices  map[int]*disj.Element
+}
+
 // Check performs the needed computation to ensure whether sep is a Balanced Separator
 func (b BalancedCheck) Check(H *Graph, sep *Edges, balFactor int) bool {
 
@@ -171,6 +176,53 @@ func (b BalancedCheck) Check(H *Graph, sep *Edges, balFactor int) bool {
 
 // CheckOut does the same as Check, except it also passes on the components found, if output is true
 func (b BalancedCheck) CheckOut(H *Graph, sep *Edges, balFactor int) (bool, []Graph, []Edge) {
+
+	//balancedness condition
+	comps, _, isolated := H.GetComponents(*sep)
+
+	balancednessLimit := (((H.Len()) * (balFactor - 1)) / balFactor)
+
+	for i := range comps {
+		if comps[i].Len() > balancednessLimit {
+			return false, []Graph{}, []Edge{}
+		}
+	}
+
+	// Make sure that "special seps can never be used as separators"
+	for i := range H.Special {
+		if IntHash(H.Special[i].Vertices()) == IntHash(sep.Vertices()) {
+			return false, []Graph{}, []Edge{}
+		}
+	}
+
+	return true, comps, isolated
+}
+
+func (b BalancedCheckFast) Check(H *Graph, sep *Edges, balFactor int) bool {
+
+	//balancedness condition
+	comps, _, _ := H.GetComponents_fast(*sep, b.Vertices)
+
+	balancednessLimit := (((H.Len()) * (balFactor - 1)) / balFactor)
+
+	for i := range comps {
+		if comps[i].Len() > balancednessLimit {
+			return false
+		}
+	}
+
+	// Make sure that "special seps can never be used as separators"
+	for i := range H.Special {
+		if IntHash(H.Special[i].Vertices()) == IntHash(sep.Vertices()) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// CheckOut does the same as Check, except it also passes on the components found, if output is true
+func (b BalancedCheckFast) CheckOut(H *Graph, sep *Edges, balFactor int) (bool, []Graph, []Edge) {
 
 	//balancedness condition
 	comps, _, isolated := H.GetComponents(*sep)
