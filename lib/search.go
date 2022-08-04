@@ -5,7 +5,8 @@ package lib
 import (
 	"runtime"
 	"sync"
-	disj "github.com/cem-okulmus/BalancedGo/disj"
+
+	disj "github.com/spakin/disjoint"
 )
 
 // A Search implements a parallel search for separators fulfilling some given predicate

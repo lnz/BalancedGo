@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	lib "github.com/cem-okulmus/BalancedGo/lib"
-	disj "github.com/cem-okulmus/BalancedGo/disj"
+	disj "github.com/spakin/disjoint"
 )
 
 

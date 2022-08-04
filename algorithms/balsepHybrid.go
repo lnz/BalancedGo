@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/cem-okulmus/BalancedGo/lib"
-	disj "github.com/cem-okulmus/BalancedGo/disj"
+	disj "github.com/spakin/disjoint"
 )
 
 // BalSepHybrid implements a hybridised algorithm, using BalSep Local and DetKDecomp in tandem

@@ -5,8 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	// "github.com/spakin/disjoint"
-	disj "github.com/cem-okulmus/BalancedGo/disj"
+	disj "github.com/spakin/disjoint"
 )
 
 // A Graph is a collection of (special) edges
