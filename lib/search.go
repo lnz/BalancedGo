@@ -225,7 +225,7 @@ func (b BalancedCheckFast) Check(H *Graph, sep *Edges, balFactor int) bool {
 func (b BalancedCheckFast) CheckOut(H *Graph, sep *Edges, balFactor int) (bool, []Graph, []Edge) {
 
 	//balancedness condition
-	comps, _, isolated := H.GetComponents(*sep)
+	comps, _, isolated := H.GetComponents_fast(*sep, b.Vertices)
 
 	balancednessLimit := (((H.Len()) * (balFactor - 1)) / balFactor)
 

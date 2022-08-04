@@ -46,6 +46,24 @@ func BenchmarkGetCompKakuro2(b *testing.B) {
 	}
 }
 
+func BenchmarkGetCompHintKakuro2(b *testing.B) {
+	G, sep := setup("Kakuro-hard-070-ext.xml.hg", 2)
+	b.ResetTimer()
+	
+	for i := 0; i < b.N; i++ {
+		G.GetComponents_Hint(sep)
+	}
+}
+
+func BenchmarkGetCompGlobalKakuro2(b *testing.B) {
+	G, sep := setup("Kakuro-hard-070-ext.xml.hg", 2)
+	b.ResetTimer()
+	
+	for i := 0; i < b.N; i++ {
+		G.GetComponents_Global(sep)
+	}
+}
+
 func BenchmarkGetCompFastKakuro2(b *testing.B) {
 	G, sep := setup("Kakuro-hard-070-ext.xml.hg", 2)
 	var vertices = make(map[int]*disj.Element, len(G.Vertices()))
@@ -62,6 +80,15 @@ func BenchmarkGetCompKakuro3(b *testing.B) {
 	
 	for i := 0; i < b.N; i++ {
 		G.GetComponents(sep)
+	}
+}
+
+func BenchmarkGetCompHintKakuro3(b *testing.B) {
+	G, sep := setup("Kakuro-hard-070-ext.xml.hg", 2)
+	b.ResetTimer()
+	
+	for i := 0; i < b.N; i++ {
+		G.GetComponents_Hint(sep)
 	}
 }
 
@@ -82,6 +109,24 @@ func BenchmarkGetCompNono2(b *testing.B) {
 	
 	for i := 0; i < b.N; i++ {
 		G.GetComponents(sep)
+	}
+}
+
+func BenchmarkGetCompHintNono2(b *testing.B) {
+	G, sep := setup("Nonogram-180-table.xml.hg", 2)
+	b.ResetTimer()
+	
+	for i := 0; i < b.N; i++ {
+		G.GetComponents_Hint(sep)
+	}
+}
+
+func BenchmarkGetCompGlobalNono2(b *testing.B) {
+	G, sep := setup("Nonogram-180-table.xml.hg", 2)
+	b.ResetTimer()
+	
+	for i := 0; i < b.N; i++ {
+		G.GetComponents_Global(sep)
 	}
 }
 

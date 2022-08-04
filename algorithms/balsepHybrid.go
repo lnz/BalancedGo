@@ -80,7 +80,7 @@ func (b BalSepHybrid) findDecomp(currentDepth int, H lib.Graph) lib.Decomp {
 	generators := lib.SplitCombin(edges.Len(), b.K, runtime.GOMAXPROCS(-1), true)
 	parallelSearch := b.Generator.GetSearch(&H, &edges, b.BalFactor, generators)
 
-	pred := lib.BalancedCheckFast{Vertices:  make(map[int]*disj.Element, len(H.Vertices()))}
+	pred := lib.BalancedCheckFast{Vertices:  make(map[int]*disj.Element)}
 	
 	parallelSearch.FindNext(pred) // initial Search
 
@@ -99,7 +99,7 @@ func (b BalSepHybrid) findDecomp(currentDepth int, H lib.Graph) lib.Decomp {
 
 	INNER:
 		for !exhaustedSubedges {
-			comps, _, _ := H.GetComponents(balsep)
+			comps, _, _ := H.GetComponents_fast(balsep, pred.Vertices)
 
 			// log.Printf("Comps of Sep: %+v\n", comps)
 
