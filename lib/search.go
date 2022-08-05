@@ -5,8 +5,10 @@ package lib
 import (
 	"runtime"
 	"sync"
+	//"fmt"
 
-	disj "github.com/spakin/disjoint"
+	//disj "github.com/spakin/disjoint"
+	disj "github.com/cem-okulmus/BalancedGo/disj"
 )
 
 // A Search implements a parallel search for separators fulfilling some given predicate
@@ -64,7 +66,7 @@ func (s *ParallelSearch) GetResult() []int {
 
 // A Predicate checks if for some subgraph and a separator, some condition holds
 type Predicate interface {
-	Check(H *Graph, sep *Edges, balancedFactor int) bool
+	Check(H *Graph, sep *Edges, balancedFactor int,	Vertices map[int]*disj.Element) bool
 }
 
 // FindNext starts the search and stops if some separator which satisfies the predicate
@@ -91,14 +93,16 @@ func (s *ParallelSearch) FindNext(pred Predicate) {
 	found := make(chan []int)
 	wait := make(chan bool)
 	//start workers
-	for i := 0; i < numProc; i++ {
-		go s.worker(i, found, &wg, &finished, pred)
-	}
 
 	go func() {
 		wg.Wait()
 		wait <- true
 	}()
+
+	for i := 0; i < numProc; i++ {
+		go s.worker(i, found, &wg, &finished, pred)
+	}
+
 
 	select {
 	case s.Result = <-found:
@@ -119,7 +123,8 @@ func (s ParallelSearch) worker(workernum int, found chan []int, wg *sync.WaitGro
 		}
 	}()
 	defer wg.Done()
-
+	var Vertices = make(map[int]*disj.Element)
+	
 	gen := s.Generators[workernum]
 
 	for gen.HasNext() {
@@ -132,7 +137,7 @@ func (s ParallelSearch) worker(workernum int, found chan []int, wg *sync.WaitGro
 		j := gen.GetNext()
 
 		sep := GetSubset(*s.Edges, j)
-		if pred.Check(s.H, &sep, s.BalFactor) {
+		if pred.Check(s.H, &sep, s.BalFactor, Vertices) {
 			gen.Found() // cache result
 			found <- j
 			// log.Println("Worker", workernum, "won, found: ", j)
@@ -147,12 +152,10 @@ func (s ParallelSearch) worker(workernum int, found chan []int, wg *sync.WaitGro
 // BalancedCheck looks for Balanced Separators
 type BalancedCheck struct{}
 
-type BalancedCheckFast struct{
-	Vertices  map[int]*disj.Element
-}
+type BalancedCheckFast struct{}
 
 // Check performs the needed computation to ensure whether sep is a Balanced Separator
-func (b BalancedCheck) Check(H *Graph, sep *Edges, balFactor int) bool {
+func (b BalancedCheck) Check(H *Graph, sep *Edges, balFactor int,  _ map[int]*disj.Element) bool {
 
 	//balancedness condition
 	comps, _, _ := H.GetComponents(*sep)
@@ -199,10 +202,10 @@ func (b BalancedCheck) CheckOut(H *Graph, sep *Edges, balFactor int) (bool, []Gr
 	return true, comps, isolated
 }
 
-func (b BalancedCheckFast) Check(H *Graph, sep *Edges, balFactor int) bool {
+func (b BalancedCheckFast) Check(H *Graph, sep *Edges, balFactor int, Vertices  map[int]*disj.Element) bool {
 
 	//balancedness condition
-	comps, _, _ := H.GetComponents_fast(*sep, b.Vertices)
+	comps, _, _ := H.GetComponents_fast(*sep, Vertices)
 
 	balancednessLimit := (((H.Len()) * (balFactor - 1)) / balFactor)
 
@@ -223,10 +226,10 @@ func (b BalancedCheckFast) Check(H *Graph, sep *Edges, balFactor int) bool {
 }
 
 // CheckOut does the same as Check, except it also passes on the components found, if output is true
-func (b BalancedCheckFast) CheckOut(H *Graph, sep *Edges, balFactor int) (bool, []Graph, []Edge) {
+func (b BalancedCheckFast) CheckOut(H *Graph, sep *Edges, balFactor int, Vertices  map[int]*disj.Element) (bool, []Graph, []Edge) {
 
 	//balancedness condition
-	comps, _, isolated := H.GetComponents_fast(*sep, b.Vertices)
+	comps, _, isolated := H.GetComponents_fast(*sep, Vertices)
 
 	balancednessLimit := (((H.Len()) * (balFactor - 1)) / balFactor)
 
@@ -253,11 +256,12 @@ type ParentCheck struct {
 	Child []int
 }
 
+
 // Check performs the needed computation to ensure whether sep is a good parent
-func (p ParentCheck) Check(H *Graph, sep *Edges, balFactor int) bool {
+func (p ParentCheck) Check(H *Graph, sep *Edges, balFactor int, Vertices  map[int]*disj.Element) bool {
 
 	//balancedness condition
-	comps, _, _ := H.GetComponents(*sep)
+	comps, _, _ := H.GetComponents_fast(*sep, Vertices)
 
 	foundCompLow := false
 	var compLow Graph

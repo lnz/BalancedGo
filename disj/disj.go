@@ -57,6 +57,11 @@ func NewElement() *Element {
 	return s
 }
 
+func (e *Element) Reset() {
+	e.parent = e
+	e.rank = 0
+}
+	
 // Find returns an arbitrary element of a set when invoked on any element of
 // the set, The important feature is that it returns the same value when
 // invoked on any element of the set.  Consequently, it can be used to test if

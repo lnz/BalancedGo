@@ -2,10 +2,12 @@ package lib
 
 import (
 	"bytes"
+	//"fmt"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	disj "github.com/spakin/disjoint"
+	//disj "github.com/spakin/disjoint"
+	disj "github.com/cem-okulmus/BalancedGo/disj"
 )
 
 // A Graph is a collection of (special) edges
@@ -102,6 +104,7 @@ func (g Graph) GetSubset(s []int) Edges {
 func (g Graph) GetComponents_fast(sep Edges, vertices map[int]*disj.Element) ([]Graph, map[int]int, []Edge) {
 	var outputG []Graph
 
+	//fmt.Printf("Called fast for %p\n", vertices)
 	var comps = make(map[*disj.Element][]Edge)
 	var compsSp = make(map[*disj.Element][]Edges)
 
@@ -113,17 +116,23 @@ func (g Graph) GetComponents_fast(sep Edges, vertices map[int]*disj.Element) ([]
 
 	//  Set up the disj sets for each node
 	for _, i := range g.Vertices() {
-		vertices[i] = disj.NewElement()
+		if e, ok := vertices[i]; ok {
+			e.Reset()
+		} else { 
+			vertices[i] = disj.NewElement()
+		}
 	}
 
 	// Merge together the connected components
 	for k := range g.Edges.Slice() {
 		for i := 0; i < len(g.Edges.Slice()[k].Vertices); i++ {
-			if balSepCache[g.Edges.Slice()[k].Vertices[i]] {
+			if _, ok := balSepCache[g.Edges.Slice()[k].Vertices[i]]; ok  {
+			//if balSepCache[g.Edges.Slice()[k].Vertices[i]] {
 				continue
 			}
 			for j := i + 1; j < len(g.Edges.Slice()[k].Vertices); j++ {
-				if balSepCache[g.Edges.Slice()[k].Vertices[j]] {
+				if _, ok := balSepCache[g.Edges.Slice()[k].Vertices[j]]; ok {
+				//if balSepCache[g.Edges.Slice()[k].Vertices[j]] {
 					continue
 				}
 

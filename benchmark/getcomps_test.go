@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	lib "github.com/cem-okulmus/BalancedGo/lib"
-	disj "github.com/spakin/disjoint"
+	//disj "github.com/spakin/disjoint"
+	disj "github.com/cem-okulmus/BalancedGo/disj"
 )
 
 
@@ -94,6 +95,25 @@ func BenchmarkGetCompHintKakuro3(b *testing.B) {
 
 func BenchmarkGetCompFastKakuro3(b *testing.B) {
 	G, sep := setup("Kakuro-hard-070-ext.xml.hg", 2)
+	var vertices = make(map[int]*disj.Element, len(G.Vertices()))
+	b.ResetTimer()
+	
+	for i := 0; i < b.N; i++ {
+		G.GetComponents_fast(sep, vertices)
+	}
+}
+
+func BenchmarkGetCompSmallCQ2(b *testing.B) {
+	G, sep := setup("s27.hg", 2)
+	b.ResetTimer()
+	
+	for i := 0; i < b.N; i++ {
+		G.GetComponents(sep)
+	}
+}
+
+func BenchmarkGetCompSmallCQFast2(b *testing.B) {
+	G, sep := setup("s27.hg", 2)
 	var vertices = make(map[int]*disj.Element, len(G.Vertices()))
 	b.ResetTimer()
 	

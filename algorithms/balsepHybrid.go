@@ -80,7 +80,8 @@ func (b BalSepHybrid) findDecomp(currentDepth int, H lib.Graph) lib.Decomp {
 	generators := lib.SplitCombin(edges.Len(), b.K, runtime.GOMAXPROCS(-1), true)
 	parallelSearch := b.Generator.GetSearch(&H, &edges, b.BalFactor, generators)
 
-	pred := lib.BalancedCheckFast{Vertices:  make(map[int]*disj.Element)}
+	pred := lib.BalancedCheckFast{}
+	var Vertices =  make(map[int]*disj.Element)
 	
 	parallelSearch.FindNext(pred) // initial Search
 
@@ -99,7 +100,7 @@ func (b BalSepHybrid) findDecomp(currentDepth int, H lib.Graph) lib.Decomp {
 
 	INNER:
 		for !exhaustedSubedges {
-			comps, _, _ := H.GetComponents_fast(balsep, pred.Vertices)
+			comps, _, _ := H.GetComponents_fast(balsep, Vertices)
 
 			// log.Printf("Comps of Sep: %+v\n", comps)
 
@@ -117,7 +118,6 @@ func (b BalSepHybrid) findDecomp(currentDepth int, H lib.Graph) lib.Decomp {
 					}(i, comps, SepSpecial)
 				} else {
 					go func(i int, comps []lib.Graph, SepSpecial lib.Edges) {
-
 						// Base case handling
 						//stop if there are at most two special edges left
 						if comps[i].Len() <= 1 {
